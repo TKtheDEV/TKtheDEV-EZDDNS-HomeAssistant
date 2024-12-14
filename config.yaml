@@ -4,7 +4,7 @@ slug: ezddns-dev
 name: EZ DDNS DEV
 description: >
   DEVELOPMENT BRANCH! DONT USE IN PRODUCTION!!!
-url: https://github.com/TKtheDEV/EZDDNS-HomeAssistant/blob/dev
+url: https://github.com/TKtheDEV/EZDDNS-HomeAssistant/tree/dev
 arch:
   - aarch64
   - amd64
