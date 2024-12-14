@@ -1,0 +1,54 @@
+---
+configuration:
+  zoneId:
+    name: DNS-Zone-ID
+    description: >-
+      Obtainable through the Cloudflare web UI
+  apiToken:
+    name: API Token
+    description: >-
+      A Token with "DNS ZONE EDIT" permissions for the domain its' records you want to update
+  hostfqdn:
+    name: FQDN
+    description: >-
+      The fully qualified domain name of your Homeassistant (eg. home.yourdomain.com)
+  v4Enabled:
+    name: Generate A record
+    description: >-
+      If youre behint CG-NAT or DS-Lite you cannot be reached via IPv4.
+      Therefore A records are disabled by default. Caution: Enabling this might make your instance unreachable for some devices if youre behind CG-NAT/DS-Lite.
+  prefixLength:
+    name: Prefix Length
+    description: >-
+      The length of your IPv6 prefix, usually /56, /48 or /60
+  refresh:
+    name: Refresh
+    description: >-
+      Time in seconds to check if your Prefix and IP Addresses have changed
+  dnsttl:
+    name: DNS-TTL
+    description: >-
+      The records' Time-To-Live in seconds. 1 means auto. Between 60 and 86400. 
+      Too low of a value results in increased DNS lookup frequency on your devices and therefore slightly longer loading times.
+  proxied:
+    name: Cloudflare-proxied
+    description: >-
+      Enable or disable the Cloudflare proxy for the records as you would do manually in the CF-dashboard
+  legacyMode:
+    name: Legacy Mode
+    description: >-
+      NOT RECOMMENDED!
+      Only enable if "Generate A record" is enabled in case your provider has IPv6 Issues!
+  customEnabled:
+    name: Enable custom records list
+    description: >-
+      Update records for hosts other than your Homeassistant too (available through edit config as YAML)
+      You have to specify subnet+interface ID. For example: 32:1034:56ff:fe78:9abc for /56
+  customRecords:
+    name: Custom Records
+    description: >-
+      Enter your custom records with the following schema:
+      fqdn,A (for A record with HomeAssistants' public v4 address)
+      fqdn,AAAA (for AAAA record with HAs public v6 address)
+      fqdn,AAAA,suffix (for AAAA records with HAs prefix and custom subnet and if-id)
+      custom.example.com,AAAA,2:6034:45ff:fe23:653b (Example for /60 prefix)
