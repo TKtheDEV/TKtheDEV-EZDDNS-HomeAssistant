@@ -38,7 +38,7 @@ configuration:
     name: Legacy Mode
     description: >-
       NOT RECOMMENDED!
-      Only enable if "Generate A record" is enabled in case your provider has IPv6 Issues!
+      Only enable if "Generate A record" is enabled in case your internet service provider has IPv6 Issues!
   customEnabled:
     name: Enable custom records list
     description: >-

@@ -1,5 +1,5 @@
 # Changelog
-## 2.1.2
+## 2.1.3
  - More robust backend
  - Fixed weird behaviour when updating and creating records at the same time
  - Better log visibility by adding spacers

@@ -97,17 +97,27 @@ parse_records() {
         if [[ "$record_type" == "A" ]]; then
             record_value="$v4"  # Use IPv4 for "A" records
         elif [[ "$record_type" == "AAAA" ]]; then
-            record_value="$v6"  # Default to IPv6
-            [[ -n "$suffix" ]] && record_value="${prefix}${suffix}"  # Use prefix + suffix for custom AAAA records
+            if [[ -n "$suffix" ]]; then
+                # Use prefix + suffix for custom AAAA records
+                if [[ "$prefix" != "Unavailable" && "$suffix" =~ ^[0-9a-fA-F:]+$ ]]; then
+                    record_value="${prefix}${suffix}"
+                else
+                    printf "\nWarning: Invalid prefix or suffix for record '%s'. Skipping.\n" "$record_fqdn" >&2
+                    continue
+                fi
+            else
+                record_value="$v6"  # Use host's IPv6 if no suffix is specified
+            fi
         fi
 
         # Ensure the record value is valid before proceeding
-        if [[ -z "$record_value" || "$record_value" == "Unavailable" ]]; then
+        if [[ -z "$record_value" || "$record_value" == "Unavailable" || 
+              ("$record_type" == "AAAA" && ! "$record_value" =~ ^([0-9a-fA-F:]+:+)+[0-9a-fA-F]{1,4}$) ]]; then
             printf "\nWarning: Invalid value for record '%s'. Skipping.\n+++\n" "$record_fqdn" >&2
             continue
         fi
 
-        # Manage the record (create or update) and echo additional info
+        # Manage the record (create or update)
         if cf_manage_record "$record_fqdn" "$record_type" "$record_value"; then
             printf "\n+++\n"
         else
