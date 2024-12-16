@@ -171,26 +171,16 @@ while true; do
             v4="${v4new}"  # Update stored IPv4 address
             printf "\n\nYour new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n+++\n"
 
-            # Update DNS records for the main FQDN if configured
-#            if [[ -n "${hostfqdn}" ]]; then
-#                [[ "${legacyMode}" == false && "${v6}" != "Unavailable" ]] && cf_manage_record "${hostfqdn}" "AAAA" "${v6}"
-#                [[ "${v4Enabled}" == true && "${v4}" != "Unavailable" ]] && cf_manage_record "${hostfqdn}" "A" "${v4}"
-#            fi
-
-            # Check and update AAAA (IPv6) record
+            # Check and update AAAA (IPv6) record for the main FQDN if configured
             if [[ -n "${hostfqdn}" && "${legacyMode}" == false && "${v6}" != "Unavailable" ]]; then
-                printf "Debug: Updating AAAA record for hostfqdn='%s' with IPv6='%s'\n" "${hostfqdn}" "${v6}"
                 cf_manage_record "${hostfqdn}" "AAAA" "${v6}" || printf "Error: Failed to update AAAA record for %s\n" "${hostfqdn}" >&2
-            else
-                printf "Debug: Skipping AAAA record update. Conditions not met. hostfqdn='%s', legacyMode='%s', v6='%s'\n" "${hostfqdn}" "${legacyMode}" "${v6}"
+                printf "\n+++\n"
             fi
 
-            # Check and update A (IPv4) record
+            # Check and update A (IPv4) record for the main FQDN if configured
             if [[ -n "${hostfqdn}" && "${v4Enabled}" == true && "${v4}" != "Unavailable" ]]; then
-                printf "Debug: Updating A record for hostfqdn='%s' with IPv4='%s'\n" "${hostfqdn}" "${v4}"
                 cf_manage_record "${hostfqdn}" "A" "${v4}" || printf "Error: Failed to update A record for %s\n" "${hostfqdn}" >&2
-            else
-                printf "Debug: Skipping A record update. Conditions not met. hostfqdn='%s', v4Enabled='%s', v4='%s'\n" "${hostfqdn}" "${v4Enabled}" "${v4}"
+                printf "\n+++\n"
             fi
 
             # Update custom DNS records if enabled
