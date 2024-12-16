@@ -55,13 +55,13 @@ cf_manage_record() {
 
     # Create or update the record
     if [[ $record_id =~ ^[0-9a-fA-F]{32}$ ]]; then
-        printf "Updating record for %s (%s)\n" "$fqdn" "$record_type"
+        printf "\n\nUpdating record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api PUT "dns_records/${record_id}" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
             printf "Error: Failed to update record for %s (%s)\n" "$fqdn" "$record_type" >&2
             return 1
         }
     else
-        printf "Creating new record for %s (%s)\n" "$fqdn" "$record_type"
+        printf "\n\nCreating new record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api POST "dns_records" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
             printf "Error: Failed to create record for %s (%s)\n" "$fqdn" "$record_type" >&2
             return 1
@@ -73,7 +73,7 @@ cf_manage_record() {
 parse_records() {
     # Validate if customRecords is not empty
     if [[ -z "$customRecords" ]]; then
-        printf "Error: customRecords is empty or not set.\n" >&2
+        printf "\n\nError: customRecords is empty or not set.\n" >&2
         return 1
     fi
 
@@ -81,13 +81,13 @@ parse_records() {
     printf "%s\n" "$customRecords" | while IFS=, read -r record_fqdn record_type suffix; do
         # Skip empty or malformed lines
         if [[ -z "$record_fqdn" || -z "$record_type" ]]; then
-            printf "Warning: Skipping invalid record entry: %s,%s,%s\n" "$record_fqdn" "$record_type" "$suffix" >&2
+            printf "\n\nWarning: Skipping invalid record entry: %s,%s,%s\n" "$record_fqdn" "$record_type" "$suffix" >&2
             continue
         fi
 
         # Validate record type
         if [[ "$record_type" != "A" && "$record_type" != "AAAA" ]]; then
-            printf "Warning: Invalid record type '%s' for '%s'. Skipping.\n" "$record_type" "$record_fqdn" >&2
+            printf "\n\nWarning: Invalid record type '%s' for '%s'. Skipping.\n" "$record_type" "$record_fqdn" >&2
             continue
         fi
 
@@ -102,13 +102,13 @@ parse_records() {
 
         # Ensure the record value is valid before proceeding
         if [[ -z "$record_value" || "$record_value" == "Unavailable" ]]; then
-            printf "Warning: Invalid value for record '%s'. Skipping.\n" "$record_fqdn" >&2
+            printf "\n\nWarning: Invalid value for record '%s'. Skipping.\n" "$record_fqdn" >&2
             continue
         fi
 
         # Manage the record (create or update)
         cf_manage_record "$record_fqdn" "$record_type" "$record_value" || {
-            printf "Error: Failed to process record '%s'.\n" "$record_fqdn" >&2
+            printf "\n\nError: Failed to process record '%s'.\n" "$record_fqdn" >&2
         }
     done
 }
