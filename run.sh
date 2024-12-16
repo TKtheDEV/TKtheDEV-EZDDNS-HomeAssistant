@@ -156,7 +156,7 @@ while true; do
     if [[ "${v6new}" == "Unavailable" && "${v4new}" == "Unavailable" ]]; then
         successCount=0
         ((failCount+= 1))  # Increment failure count
-        echo "No Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!"
+        echo -e "\n\nNo Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!"
     else
         # Reset failure count and increment success count
         failCount=0
@@ -166,7 +166,7 @@ while true; do
         if [[ "${v6new}" != "${v6}" || "${v4new}" != "${v4}" ]]; then
             v6="${v6new}"  # Update stored IPv6 address
             v4="${v4new}"  # Update stored IPv4 address
-            echo "Your new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}"
+            echo -e "\n\nYour new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}"
 
             # Update DNS records for the main FQDN if configured
             if [[ -n "${hostfqdn}" ]]; then
@@ -181,7 +181,7 @@ while true; do
             successCount=0  # Reset success counter after update
         else
             # IPs haven't changed, just print a message
-            echo -e "\nIPs haven't changed since $((refreshMin * successCount)) minutes. Waiting ${refreshMin} minutes until the next update"
+            echo -e "\n\nIPs haven't changed since $((refreshMin * successCount)) minutes. Waiting ${refreshMin} minutes until the next update"
             echo "Your public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}"
         fi
     fi
