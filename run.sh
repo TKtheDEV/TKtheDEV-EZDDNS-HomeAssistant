@@ -81,13 +81,13 @@ parse_records() {
     printf "%s\n" "$customRecords" | while IFS=, read -r record_fqdn record_type suffix; do
         # Skip empty or malformed lines
         if [[ -z "$record_fqdn" || -z "$record_type" ]]; then
-            printf "\n\nWarning: Skipping invalid record entry: %s,%s,%s\n+++\n" "$record_fqdn" "$record_type" "$suffix" >&2
+            printf "\nWarning: Skipping invalid record entry: %s,%s,%s\n+++\n" "$record_fqdn" "$record_type" "$suffix" >&2
             continue
         fi
 
         # Validate record type
         if [[ "$record_type" != "A" && "$record_type" != "AAAA" ]]; then
-            printf "\n\nWarning: Invalid record type '%s' for '%s'. Skipping.\n+++\n" "$record_type" "$record_fqdn" >&2
+            printf "\nWarning: Invalid record type '%s' for '%s'. Skipping.\n+++\n" "$record_type" "$record_fqdn" >&2
             continue
         fi
 
@@ -106,10 +106,12 @@ parse_records() {
             continue
         fi
 
-        # Manage the record (create or update)
-        cf_manage_record "$record_fqdn" "$record_type" "$record_value" || {
+        # Manage the record (create or update) and echo additional info
+        if cf_manage_record "$record_fqdn" "$record_type" "$record_value"; then
+            printf "\n+++\n"
+        else
             printf "\nError: Failed to process record '%s'.\n" "$record_fqdn" >&2
-        }
+        fi
     done
 }
 
