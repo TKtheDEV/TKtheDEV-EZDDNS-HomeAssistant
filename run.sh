@@ -44,7 +44,7 @@ cf_manage_record() {
 
     # Validate inputs
     if [[ -z "$fqdn" || -z "$record_type" || -z "$record_value" ]]; then
-        printf "Error: Missing parameters for cf_manage_record: fqdn='%s', type='%s', value='%s'\n" \
+        printf "\nError: Missing parameters for cf_manage_record: fqdn='%s', type='%s', value='%s'\n" \
             "$fqdn" "$record_type" "$record_value" >&2
         return 1
     fi
@@ -57,13 +57,13 @@ cf_manage_record() {
     if [[ $record_id =~ ^[0-9a-fA-F]{32}$ ]]; then
         printf "\n\nUpdating record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api PUT "dns_records/${record_id}" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
-            printf "Error: Failed to update record for %s (%s)\n" "$fqdn" "$record_type" >&2
+            printf "\nError: Failed to update record for %s (%s)\n" "$fqdn" "$record_type" >&2
             return 1
         }
     else
         printf "\n\nCreating new record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api POST "dns_records" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
-            printf "Error: Failed to create record for %s (%s)\n" "$fqdn" "$record_type" >&2
+            printf "\nError: Failed to create record for %s (%s)\n" "$fqdn" "$record_type" >&2
             return 1
         }
     fi
@@ -156,7 +156,7 @@ while true; do
     if [[ "${v6new}" == "Unavailable" && "${v4new}" == "Unavailable" ]]; then
         successCount=0
         ((failCount+= 1))  # Increment failure count
-        echo -e "\n\nNo Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!"
+        printf "\n\nNo Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!"
     else
         # Reset failure count and increment success count
         failCount=0
@@ -166,7 +166,7 @@ while true; do
         if [[ "${v6new}" != "${v6}" || "${v4new}" != "${v4}" ]]; then
             v6="${v6new}"  # Update stored IPv6 address
             v4="${v4new}"  # Update stored IPv4 address
-            echo -e "\n\nYour new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}"
+            printf "\n\nYour new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n"
 
             # Update DNS records for the main FQDN if configured
             if [[ -n "${hostfqdn}" ]]; then
@@ -177,12 +177,12 @@ while true; do
             # Update custom DNS records if enabled
             [[ ${customEnabled} == true ]] && parse_records
 
-            echo -e "\n\nUpdated records. Waiting ${refreshMin} minutes until the next update"
+            printf "\n\nUpdated records. Waiting ${refreshMin} minutes until the next update\n"
             successCount=0  # Reset success counter after update
         else
             # IPs haven't changed, just print a message
-            echo -e "\n\nIPs haven't changed since $((refreshMin * successCount)) minutes. Waiting ${refreshMin} minutes until the next update"
-            echo "Your public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}"
+            printf "\n\nIPs haven't changed since $((refreshMin * successCount)) minutes. Waiting ${refreshMin} minutes until the next update\n"
+            printf "Your public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n"
         fi
     fi
 
