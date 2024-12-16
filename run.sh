@@ -44,7 +44,7 @@ cf_manage_record() {
 
     # Validate inputs
     if [[ -z "$fqdn" || -z "$record_type" || -z "$record_value" ]]; then
-        printf "\nError: Missing parameters for cf_manage_record: fqdn='%s', type='%s', value='%s'\n \n" \
+        printf "\nError: Missing parameters for cf_manage_record: fqdn='%s', type='%s', value='%s'\n+++\n" \
             "$fqdn" "$record_type" "$record_value" >&2
         return 1
     fi
@@ -57,13 +57,13 @@ cf_manage_record() {
     if [[ $record_id =~ ^[0-9a-fA-F]{32}$ ]]; then
         printf "\n\nUpdating record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api PUT "dns_records/${record_id}" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
-            printf "\nError: Failed to update record for %s (%s)\n \n" "$fqdn" "$record_type" >&2
+            printf "\nError: Failed to update record for %s (%s)\n+++\n" "$fqdn" "$record_type" >&2
             return 1
         }
     else
         printf "\n\nCreating new record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api POST "dns_records" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
-            printf "\nError: Failed to create record for %s (%s)\n \n" "$fqdn" "$record_type" >&2
+            printf "\nError: Failed to create record for %s (%s)\n+++\n" "$fqdn" "$record_type" >&2
             return 1
         }
     fi
@@ -73,7 +73,7 @@ cf_manage_record() {
 parse_records() {
     # Validate if customRecords is not empty
     if [[ -z "$customRecords" ]]; then
-        printf "\nError: customRecords is empty or not set.\n \n" >&2
+        printf "\nError: customRecords is empty or not set.\n+++\n" >&2
         return 1
     fi
 
@@ -81,13 +81,13 @@ parse_records() {
     printf "%s\n" "$customRecords" | while IFS=, read -r record_fqdn record_type suffix; do
         # Skip empty or malformed lines
         if [[ -z "$record_fqdn" || -z "$record_type" ]]; then
-            printf "\n\nWarning: Skipping invalid record entry: %s,%s,%s\n \n" "$record_fqdn" "$record_type" "$suffix" >&2
+            printf "\n\nWarning: Skipping invalid record entry: %s,%s,%s\n+++\n" "$record_fqdn" "$record_type" "$suffix" >&2
             continue
         fi
 
         # Validate record type
         if [[ "$record_type" != "A" && "$record_type" != "AAAA" ]]; then
-            printf "\n\nWarning: Invalid record type '%s' for '%s'. Skipping.\n \n" "$record_type" "$record_fqdn" >&2
+            printf "\n\nWarning: Invalid record type '%s' for '%s'. Skipping.\n+++\n" "$record_type" "$record_fqdn" >&2
             continue
         fi
 
@@ -102,7 +102,7 @@ parse_records() {
 
         # Ensure the record value is valid before proceeding
         if [[ -z "$record_value" || "$record_value" == "Unavailable" ]]; then
-            printf "\nWarning: Invalid value for record '%s'. Skipping.\n \n" "$record_fqdn" >&2
+            printf "\nWarning: Invalid value for record '%s'. Skipping.\n+++\n" "$record_fqdn" >&2
             continue
         fi
 
@@ -156,7 +156,7 @@ while true; do
     if [[ "${v6new}" == "Unavailable" && "${v4new}" == "Unavailable" ]]; then
         successCount=0
         ((failCount+= 1))  # Increment failure count
-        printf "\nNo Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!\n \n"
+        printf "\nNo Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!\n+++\n"
     else
         # Reset failure count and increment success count
         failCount=0
@@ -166,7 +166,7 @@ while true; do
         if [[ "${v6new}" != "${v6}" || "${v4new}" != "${v4}" ]]; then
             v6="${v6new}"  # Update stored IPv6 address
             v4="${v4new}"  # Update stored IPv4 address
-            printf "\n\nYour new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n \n"
+            printf "\n\nYour new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n+++\n"
 
             # Update DNS records for the main FQDN if configured
             if [[ -n "${hostfqdn}" ]]; then
@@ -177,12 +177,12 @@ while true; do
             # Update custom DNS records if enabled
             [[ ${customEnabled} == true ]] && parse_records
 
-            printf "\nUpdated records. Waiting ${refreshMin} minutes until the next update\n \n"
+            printf "\nUpdated records. Waiting ${refreshMin} minutes until the next update\n+++\n"
             successCount=0  # Reset success counter after update
         else
             # IPs haven't changed, just print a message
             printf "\nIPs haven't changed since $((refreshMin * successCount)) minutes. Waiting ${refreshMin} minutes until the next update\n"
-            printf "Your public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n \n"
+            printf "Your public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n+++\n"
         fi
     fi
 
