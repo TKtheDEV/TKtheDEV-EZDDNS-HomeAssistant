@@ -38,35 +38,34 @@ cf_api() {
 
 # Function to manage DNS records (create or update)
 cf_manage_record() {
-    fqdn=$1  # Fully qualified domain name (FQDN)
-    record_type=$2  # DNS record type (A or AAAA)
-    record_value=$3  # The value for the DNS record (IPv4 or IPv6)
+    local fqdn=$1       # Fully qualified domain name (FQDN)
+    local record_type=$2  # DNS record type (A or AAAA)
+    local record_value=$3  # The value for the DNS record (IPv4 or IPv6)
 
-    # Make the API call and filter for the 'id' field containing a 32-char hex string
-    record_id=$(curl -s -X GET \
-    "https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?type=${record_type}&name=${fqdn}" \
-    -H "Authorization: Bearer ${apiToken}" \
-    -H "Content-Type: application/json" \
-    | grep -oE '"id":"[0-9a-fA-F]{32}"' \
-    | grep -oE '[0-9a-fA-F]{32}')
+    # Validate inputs
+    if [[ -z "$fqdn" || -z "$record_type" || -z "$record_value" ]]; then
+        printf "Error: Missing parameters for cf_manage_record: fqdn='%s', type='%s', value='%s'\n" \
+            "$fqdn" "$record_type" "$record_value" >&2
+        return 1
+    fi
 
-    # Check if we found a valid ID
+    # Check if the record exists
+    local record_id
+    record_id=$(cf_api GET "dns_records?type=${record_type}&name=${fqdn}" | grep -oE '"id":"[0-9a-fA-F]{32}"' | grep -oE '[0-9a-fA-F]{32}')
+
+    # Create or update the record
     if [[ $record_id =~ ^[0-9a-fA-F]{32}$ ]]; then
-        echo "Record exists with ID: $record_id"
-        # Update the record
-        curl -s -X PUT \
-        "https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${record_id}" \
-        -H "Authorization: Bearer ${apiToken}" \
-        -H "Content-Type: application/json" \
-        --data "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}"
+        printf "Updating record for %s (%s)\n" "$fqdn" "$record_type"
+        cf_api PUT "dns_records/${record_id}" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
+            printf "Error: Failed to update record for %s (%s)\n" "$fqdn" "$record_type" >&2
+            return 1
+        }
     else
-        echo "Record does not exist, creating new record"
-        # Create the record
-        curl -s -X POST \
-        "https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records" \
-        -H "Authorization: Bearer ${apiToken}" \
-        -H "Content-Type: application/json" \
-        --data "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}"
+        printf "Creating new record for %s (%s)\n" "$fqdn" "$record_type"
+        cf_api POST "dns_records" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
+            printf "Error: Failed to create record for %s (%s)\n" "$fqdn" "$record_type" >&2
+            return 1
+        }
     fi
 }
 
@@ -108,7 +107,9 @@ parse_records() {
         fi
 
         # Manage the record (create or update)
-        cf_manage_record "$record_fqdn" "$record_type" "$record_value"
+        cf_manage_record "$record_fqdn" "$record_type" "$record_value" || {
+            printf "Error: Failed to process record '%s'.\n" "$record_fqdn" >&2
+        }
     done
 }
 
