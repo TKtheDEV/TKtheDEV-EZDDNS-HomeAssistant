@@ -69,7 +69,7 @@ cf_manage_record() {
     fi
 }
 
-printf "+++\nEZDDNS loaded...\n+++"
+printf "+++\n Startup of EZDDNS by TKtheDEV complete...\n+++"
 # Function to process custom DNS records
 parse_records() {
     # Validate if customRecords is not empty
