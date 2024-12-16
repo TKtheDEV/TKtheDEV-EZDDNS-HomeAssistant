@@ -38,50 +38,84 @@ cf_api() {
 
 # Function to manage DNS records (create or update)
 cf_manage_record() {
-    fqdn=$1  # Fully qualified domain name (FQDN)
-    record_type=$2  # DNS record type (A or AAAA)
-    record_value=$3  # The value for the DNS record (IPv4 or IPv6)
+    local fqdn=$1       # Fully qualified domain name (FQDN)
+    local record_type=$2  # DNS record type (A or AAAA)
+    local record_value=$3  # The value for the DNS record (IPv4 or IPv6)
 
-    # Make the API call and filter for the 'id' field containing a 32-char hex string
-    record_id=$(curl -s -X GET \
-    "https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?type=${record_type}&name=${fqdn}" \
-    -H "Authorization: Bearer ${apiToken}" \
-    -H "Content-Type: application/json" \
-    | grep -oE '"id":"[0-9a-fA-F]{32}"' \
-    | grep -oE '[0-9a-fA-F]{32}')
+    # Validate inputs
+    if [[ -z "$fqdn" || -z "$record_type" || -z "$record_value" ]]; then
+        printf "\nError: Missing parameters for cf_manage_record: fqdn='%s', type='%s', value='%s'\n+++\n" \
+            "$fqdn" "$record_type" "$record_value" >&2
+        return 1
+    fi
 
-    # Check if we found a valid ID
+    # Check if the record exists
+    local record_id
+    record_id=$(cf_api GET "dns_records?type=${record_type}&name=${fqdn}" | grep -oE '"id":"[0-9a-fA-F]{32}"' | grep -oE '[0-9a-fA-F]{32}')
+
+    # Create or update the record
     if [[ $record_id =~ ^[0-9a-fA-F]{32}$ ]]; then
-        echo "Record exists with ID: $record_id"
-        # Update the record
-        curl -s -X PUT \
-        "https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${record_id}" \
-        -H "Authorization: Bearer ${apiToken}" \
-        -H "Content-Type: application/json" \
-        --data "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}"
+        printf "\nUpdating record for %s (%s)\n" "$fqdn" "$record_type"
+        cf_api PUT "dns_records/${record_id}" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
+            printf "\nError: Failed to update record for %s (%s)\n+++\n" "$fqdn" "$record_type" >&2
+            return 1
+        }
     else
-        echo "Record does not exist, creating new record"
-        # Create the record
-        curl -s -X POST \
-        "https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records" \
-        -H "Authorization: Bearer ${apiToken}" \
-        -H "Content-Type: application/json" \
-        --data "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}"
+        printf "\nCreating new record for %s (%s)\n" "$fqdn" "$record_type"
+        cf_api POST "dns_records" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
+            printf "\nError: Failed to create record for %s (%s)\n+++\n" "$fqdn" "$record_type" >&2
+            return 1
+        }
     fi
 }
 
+printf "+++\n Startup of EZDDNS by TKtheDEV complete...\n+++"
 # Function to process custom DNS records
 parse_records() {
-    echo "$customRecords" | while IFS=, read -r record_fqdn record_type suffix; do
-        # Determine the appropriate value (IPv4 or IPv6) for the record
-        record_value="${v6}"  # Default to IPv6
-        [[ "$record_type" == "A" ]] && record_value="${v4}"  # Use IPv4 for "A" records
-        [[ "$record_type" == "AAAA" && -n "$suffix" ]] && record_value="${prefix}${suffix}"  # Use prefix + suffix for custom AAAA records
+    # Validate if customRecords is not empty
+    if [[ -z "$customRecords" ]]; then
+        printf "\nError: customRecords is empty or not set.\n+++\n" >&2
+        return 1
+    fi
 
-        # Manage the record (create or update)
-        cf_manage_record "$record_fqdn" "$record_type" "$record_value"
+    # Process each record in customRecords
+    printf "%s\n" "$customRecords" | while IFS=, read -r record_fqdn record_type suffix; do
+        # Skip empty or malformed lines
+        if [[ -z "$record_fqdn" || -z "$record_type" ]]; then
+            printf "\nWarning: Skipping invalid record entry: %s,%s,%s\n+++\n" "$record_fqdn" "$record_type" "$suffix" >&2
+            continue
+        fi
+
+        # Validate record type
+        if [[ "$record_type" != "A" && "$record_type" != "AAAA" ]]; then
+            printf "\nWarning: Invalid record type '%s' for '%s'. Skipping.\n+++\n" "$record_type" "$record_fqdn" >&2
+            continue
+        fi
+
+        # Determine the appropriate value (IPv4 or IPv6) for the record
+        local record_value
+        if [[ "$record_type" == "A" ]]; then
+            record_value="$v4"  # Use IPv4 for "A" records
+        elif [[ "$record_type" == "AAAA" ]]; then
+            record_value="$v6"  # Default to IPv6
+            [[ -n "$suffix" ]] && record_value="${prefix}${suffix}"  # Use prefix + suffix for custom AAAA records
+        fi
+
+        # Ensure the record value is valid before proceeding
+        if [[ -z "$record_value" || "$record_value" == "Unavailable" ]]; then
+            printf "\nWarning: Invalid value for record '%s'. Skipping.\n+++\n" "$record_fqdn" >&2
+            continue
+        fi
+
+        # Manage the record (create or update) and echo additional info
+        if cf_manage_record "$record_fqdn" "$record_type" "$record_value"; then
+            printf "\n+++\n"
+        else
+            printf "\nError: Failed to process record '%s'.\n" "$record_fqdn" >&2
+        fi
     done
 }
+
 
 # Main loop to periodically check and update DNS records
 while true; do
@@ -125,7 +159,7 @@ while true; do
     if [[ "${v6new}" == "Unavailable" && "${v4new}" == "Unavailable" ]]; then
         successCount=0
         ((failCount+= 1))  # Increment failure count
-        echo "No Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!"
+        printf "\nNo Internet Connection detected for $((refreshMin * failCount)) minutes. Trying again in ${refreshMin} minutes!\n+++\n"
     else
         # Reset failure count and increment success count
         failCount=0
@@ -135,23 +169,29 @@ while true; do
         if [[ "${v6new}" != "${v6}" || "${v4new}" != "${v4}" ]]; then
             v6="${v6new}"  # Update stored IPv6 address
             v4="${v4new}"  # Update stored IPv4 address
-            echo "Your new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}"
+            printf "\n\nYour new public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n+++\n"
 
-            # Update DNS records for the main FQDN if configured
-            if [[ -n "${hostfqdn}" ]]; then
-                [[ "${legacyMode}" == false && "${v6}" != "Unavailable" ]] && cf_manage_record "${hostfqdn}" "AAAA" "${v6}"
-                [[ ${v4Enabled} == true && "${v4}" != "Unavailable" ]] && cf_manage_record "${hostfqdn}" "A" "${v4}"
+            # Check and update AAAA (IPv6) record for the main FQDN if configured
+            if [[ -n "${hostfqdn}" && "${legacyMode}" == false && "${v6}" != "Unavailable" ]]; then
+                cf_manage_record "${hostfqdn}" "AAAA" "${v6}" || printf "Error: Failed to update AAAA record for %s\n" "${hostfqdn}" >&2
+                printf "\n+++\n"
+            fi
+
+            # Check and update A (IPv4) record for the main FQDN if configured
+            if [[ -n "${hostfqdn}" && "${v4Enabled}" == true && "${v4}" != "Unavailable" ]]; then
+                cf_manage_record "${hostfqdn}" "A" "${v4}" || printf "Error: Failed to update A record for %s\n" "${hostfqdn}" >&2
+                printf "\n+++\n"
             fi
 
             # Update custom DNS records if enabled
             [[ ${customEnabled} == true ]] && parse_records
 
-            echo -e "\n\nUpdated records. Waiting ${refreshMin} minutes until the next update"
+            printf "\nUpdated records. Waiting ${refreshMin} minutes until the next update\n+++\n"
             successCount=0  # Reset success counter after update
         else
             # IPs haven't changed, just print a message
-            echo -e "\nIPs haven't changed since $((refreshMin * successCount)) minutes. Waiting ${refreshMin} minutes until the next update"
-            echo "Your public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}"
+            printf "\nIPs haven't changed since $((refreshMin * successCount)) minutes. Waiting ${refreshMin} minutes until the next update\n"
+            printf "Your public IP config: Prefix: ${prefix} IPv6: ${v6} IPv4: ${v4}\n+++\n"
         fi
     fi
 

@@ -1,5 +1,10 @@
 # Changelog
-## 1.10
+## 2.1.2
+ - More robust backend
+ - Fixed weird behaviour when updating and creating records at the same time
+ - Better log visibility by adding spacers
+
+## 2.0.1
  - Fixed errors when creating records
 
 ## 1.9.1
