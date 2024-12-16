@@ -72,16 +72,46 @@ cf_manage_record() {
 
 # Function to process custom DNS records
 parse_records() {
-    echo "$customRecords" | while IFS=, read -r record_fqdn record_type suffix; do
+    # Validate if customRecords is not empty
+    if [[ -z "$customRecords" ]]; then
+        printf "Error: customRecords is empty or not set.\n" >&2
+        return 1
+    fi
+
+    # Process each record in customRecords
+    printf "%s\n" "$customRecords" | while IFS=, read -r record_fqdn record_type suffix; do
+        # Skip empty or malformed lines
+        if [[ -z "$record_fqdn" || -z "$record_type" ]]; then
+            printf "Warning: Skipping invalid record entry: %s,%s,%s\n" "$record_fqdn" "$record_type" "$suffix" >&2
+            continue
+        fi
+
+        # Validate record type
+        if [[ "$record_type" != "A" && "$record_type" != "AAAA" ]]; then
+            printf "Warning: Invalid record type '%s' for '%s'. Skipping.\n" "$record_type" "$record_fqdn" >&2
+            continue
+        fi
+
         # Determine the appropriate value (IPv4 or IPv6) for the record
-        record_value="${v6}"  # Default to IPv6
-        [[ "$record_type" == "A" ]] && record_value="${v4}"  # Use IPv4 for "A" records
-        [[ "$record_type" == "AAAA" && -n "$suffix" ]] && record_value="${prefix}${suffix}"  # Use prefix + suffix for custom AAAA records
+        local record_value
+        if [[ "$record_type" == "A" ]]; then
+            record_value="$v4"  # Use IPv4 for "A" records
+        elif [[ "$record_type" == "AAAA" ]]; then
+            record_value="$v6"  # Default to IPv6
+            [[ -n "$suffix" ]] && record_value="${prefix}${suffix}"  # Use prefix + suffix for custom AAAA records
+        fi
+
+        # Ensure the record value is valid before proceeding
+        if [[ -z "$record_value" || "$record_value" == "Unavailable" ]]; then
+            printf "Warning: Invalid value for record '%s'. Skipping.\n" "$record_fqdn" >&2
+            continue
+        fi
 
         # Manage the record (create or update)
         cf_manage_record "$record_fqdn" "$record_type" "$record_value"
     done
 }
+
 
 # Main loop to periodically check and update DNS records
 while true; do
