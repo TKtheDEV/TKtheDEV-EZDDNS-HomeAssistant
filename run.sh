@@ -55,13 +55,13 @@ cf_manage_record() {
 
     # Create or update the record
     if [[ $record_id =~ ^[0-9a-fA-F]{32}$ ]]; then
-        printf "\n\nUpdating record for %s (%s)\n" "$fqdn" "$record_type"
+        printf "\nUpdating record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api PUT "dns_records/${record_id}" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
             printf "\nError: Failed to update record for %s (%s)\n+++\n" "$fqdn" "$record_type" >&2
             return 1
         }
     else
-        printf "\n\nCreating new record for %s (%s)\n" "$fqdn" "$record_type"
+        printf "\nCreating new record for %s (%s)\n" "$fqdn" "$record_type"
         cf_api POST "dns_records" "{\"type\":\"${record_type}\",\"name\":\"${fqdn}\",\"content\":\"${record_value}\",\"ttl\":${dnsttl},\"proxied\":${proxied}}" || {
             printf "\nError: Failed to create record for %s (%s)\n+++\n" "$fqdn" "$record_type" >&2
             return 1
@@ -69,6 +69,7 @@ cf_manage_record() {
     fi
 }
 
+printf "+++\nEZDDNS loaded...\n+++"
 # Function to process custom DNS records
 parse_records() {
     # Validate if customRecords is not empty
